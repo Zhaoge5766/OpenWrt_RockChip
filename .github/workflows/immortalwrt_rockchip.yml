@@ -1,4 +1,4 @@
-name: immortalwrt_rockchip
+name: immortalwrt_armsr
 
 on:
   schedule:
@@ -8,30 +8,30 @@ on:
 env:
   REPO_URL: https://github.com/DHDAXCW/immortalwrt
   REPO_BRANCH: openwrt-24.10
-  CONFIG_FILE: immortalwrt/rockchip/defconfig
+  CONFIG_FILE: immortalwrt/armsr/defconfig
   DIY_P1_SH: immortalwrt/diy-part1.sh
   DIY_P2_SH: immortalwrt/diy-part2.sh
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
   OPENWRT_NAME: immortalwrt
-  OPENWRT_NAME1: rockchip
+  OPENWRT_NAME1: armsr
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Maximize build space
+    - name: 最大化构建空间
       uses: easimon/maximize-build-space@master
       with:
         root-reserve-mb: 512
         swap-size-mb: 1024
         remove-dotnet: 'true'
-    - name: Check out the project branch
+    - name: 检出项目分支
       uses: actions/checkout@main
 
-    - name: Initialize the compilation environment
+    - name: 初始化编译环境
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -45,36 +45,36 @@ jobs:
         sudo -E apt-get -qq clean ) &
         sudo timedatectl set-timezone "$TZ"
         
-    - name: Initialize Environment and Display System Info
+    - name: 初始化环境并显示系统信息
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         chmod +x $OPENWRT_NAME/*.sh
         $GITHUB_WORKSPACE/$OPENWRT_NAME/system-Information.sh
         
-    - name: Download firmware source code
+    - name: 下载固件源代码
       run: |
         git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
 
-    - name: Update & install feeds
+    - name: 更新并安装依赖源
       working-directory: ./openwrt
       run: |
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         
-    - name: Load feeds.conf.default
+    - name: 加载 feeds.conf.default
       run: |
         chmod +x $OPENWRT_NAME/*.sh
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
-    - name: Load config
+    - name: 加载配置文件
       run: |
         [ -e "$CONFIG_FILE" ] && cat "$CONFIG_FILE" > openwrt/.config
         chmod +x $OPENWRT_NAME/*.sh && cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-    - name: Download the installation package
+    - name: 下载安装包
       id: package
       run: |
         cd openwrt
@@ -83,33 +83,33 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Compile the firmware
+    - name: 编译固件
       id: compile
       run: |
         cd openwrt
-        echo -e "$(nproc) thread compile"
+        echo -e "$(nproc) 线程编译"
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "date1=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
         echo "date2=$(date "+%Y年%m月%d日")" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Organize and Rename Files
+    - name: 整理并重命名文件
       id: organize
       if: ${{ env.UPLOAD_FIRMWARE == 'true' && !cancelled() }}
       run: |
-        cd openwrt/bin/targets/rockchip/armv8
+        cd openwrt/bin/targets/armsr/armv8
         rm -rf packages *.buildinfo *.manifest *.json
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
         
-    - name: Upload the firmware to github
+    - name: 上传固件到 GitHub
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: ${{ env.date1 }}_${{ env.OPENWRT_NAME }}_${{ env.OPENWRT_NAME1 }}
         path: ${{ env.FIRMWARE }}
 
-    - name: Generate release tags
+    - name: 生成发布标签
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
@@ -118,7 +118,7 @@ jobs:
         echo "📥 固件下载" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
         
-    - name: Publish to release
+    - name: 发布到 Release
       uses: softprops/action-gh-release@v1
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
