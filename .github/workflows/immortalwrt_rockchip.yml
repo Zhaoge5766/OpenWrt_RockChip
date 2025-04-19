@@ -56,15 +56,6 @@ jobs:
       run: |
         git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
 
-    - name: 拉取编译缓存
-      id: cache-openwrt
-      uses: actions/cache@v3
-      with:
-        path: |
-          openwrt/dl
-          openwrt/build_dir
-        key: ${{ runner.os }}-openwrt-${{ hashFiles('openwrt/.config') }}
-
     - name: 更新并安装依赖源
       working-directory: ./openwrt
       run: |
